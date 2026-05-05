@@ -39,12 +39,10 @@ class UnlabeledDataset(Dataset):
         return image
 
 def main():
-    print("SANAL HASTANE TARAMASI BAŞLIYOR (vFinal)...")
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"Çalışma Ortamı: {device}")
+    print(f"working on: {device}")
     
     df = pd.read_csv(FILE_LIST)
-    print(f"Toplam Dosya: {len(df)}")
 
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -55,21 +53,19 @@ def main():
     dataset = UnlabeledDataset(df, IMG_DIR, transform=transform)
     loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
     
-    print("Model Yükleniyor...")
     model = models.resnet50(pretrained=False)
     model.fc = nn.Linear(model.fc.in_features, 6)
     
     try:
         model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
     except Exception as e:
-        print(f"Model yüklenemedi! Yol doğru mu? ({MODEL_PATH})")
+        print(f"couldn't find the model in: ({MODEL_PATH})")
         return
 
     model = model.to(device)
     model.eval()
     all_probs = []
     
-    print("Tarama Başladı (Bu işlem dosya sayısına göre 5-10 dk sürebilir)...")
     with torch.no_grad():
         for inputs in tqdm(loader, desc="Taranıyor"):
             inputs = inputs.to(device)
@@ -79,17 +75,14 @@ def main():
             
     all_probs = np.vstack(all_probs)
     
-    print("Sonuçlar Kaydediliyor...")
+    print("saving results")
     for i, cls in enumerate(CLASS_NAMES):
         df[cls] = all_probs[:, i]
         
     df.to_csv(OUTPUT_CSV, index=False)
     
-    print(f"\nRAPOR HAZIRLANDI: {OUTPUT_CSV}")
-    print("-" * 50)
-    
     if 'source_folder' in df.columns:
-        print("🕵️DOĞRULUK ÖN İZLEMESİ:")
+        print("accuracy preview:")
         
         sick_group = df[df['source_folder'] == 'anybleed']
         healthy_group = df[df['source_folder'] == 'nobleed']
@@ -97,13 +90,13 @@ def main():
         avg_sick_score = sick_group['any'].mean()
         avg_healthy_score = healthy_group['any'].mean()
         
-        print(f"   'anybleed' Klasörünün Ortalama Risk Puanı: %{avg_sick_score*100:.2f}")
-        print(f"   'nobleed' Klasörünün Ortalama Risk Puanı : %{avg_healthy_score*100:.2f}")
+        print(f"   'anybleed' avg risk: %{avg_sick_score*100:.2f}")
+        print(f"   'nobleed' avg risk: %{avg_healthy_score*100:.2f}")
         
         if avg_sick_score > avg_healthy_score:
-            print("   MÜKEMMEL! Model hasta klasörüne çok daha yüksek puan vermiş.")
+            print("  avg risk for sick patients are higher")
         else:
-            print("   Dikkat: Puanlar birbirine yakın veya ters.")
+            print("  the risks are close or vice versa")
 
 if __name__ == "__main__":
     main()
