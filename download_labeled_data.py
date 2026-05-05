@@ -12,15 +12,13 @@ DATASET_NAME = "hoangxuanviet/multiclass-brain-hemorrhage-segmentation"
 OUTPUT_DIR = "yeni_nifti_dataset/labeled_data" 
 
 def main():
-    print(f"Etiketli Veri İndirme Operasyonu Başlıyor...")
-    print(f"Hedef: {DATASET_NAME}")
+    print(f"Downloading the Labeled Data Set")
+    print(f"Target: {DATASET_NAME}")
     
    
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
     try:
-        
-        print("\n⬇Zip dosyası indiriliyor")
         kaggle.api.dataset_download_files(DATASET_NAME, path=".", unzip=False, quiet=False)
         
         zip_name = "multiclass-brain-hemorrhage-segmentation.zip"
@@ -30,13 +28,10 @@ def main():
             if candidates:
                 zip_name = candidates[0]
             else:
-                print(" Zip dosyası bulunamadı!")
+                print("couldn't find the zip file")
                 return
 
-        print(f" İndirme bitti: {zip_name}")
-
-        
-        print("\n📦 İçerik taranıyor ve etiketli veriler ayıklanıyor...")
+        print(f" downloaded: {zip_name}")
         
         with zipfile.ZipFile(zip_name, 'r') as z:
             all_files = z.namelist()
@@ -47,28 +42,24 @@ def main():
                 and "unlabel" not in f.lower()
             ]
             
-            print(f"   -> Toplam {len(all_files)} dosyadan {len(target_files)} tanesi etiketli veri adayı.")
-            print("   -> Çıkarma işlemi başlıyor...")
-            
+
             for file in tqdm(target_files):
                 z.extract(file, OUTPUT_DIR)
                 
-        print(f" Dosyalar '{OUTPUT_DIR}' klasörüne çıkarıldı.")
+        print(f" Documents are at: '{OUTPUT_DIR}' ")
         
         
-        print("\n🧹 Zip dosyası siliniyor (Disk tasarrufu)...")
+        print("\n Removing zip file")
         os.remove(zip_name)
-        print(" Temizlik tamamlandı.")
-        
 
-        print("\n İndirilen Klasörler:")
+        print("\n downloaded folders")
         for root, dirs, files in os.walk(OUTPUT_DIR):
             level = root.replace(OUTPUT_DIR, '').count(os.sep)
             indent = ' ' * 4 * (level)
-            print(f"{indent}{os.path.basename(root)}/ ({len(files)} dosya)")
+            print(f"{indent}{os.path.basename(root)}/ ({len(files)} )")
 
     except Exception as e:
-        print(f" HATA: {e}")
+        print(f" error: {e}")
 
 if __name__ == "__main__":
     main()
